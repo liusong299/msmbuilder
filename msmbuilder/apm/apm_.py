@@ -1,3 +1,7 @@
+from __future__ import absolute_import, print_function, division
+from builtins import range
+from builtins import object
+from past.utils import old_div
 __author__ = 'LIU Song <stephenliu1989@gmail.com>'
 __contributors__ = "Fu Kit SHEONG, Xuhui HUANG"
 __version__ = "0.9"
@@ -13,9 +17,14 @@ import numpy as np
 from msmbuilder.cluster import KCenters
 from msmbuilder.lumping import PCCA
 from msmbuilder.msm import MarkovStateModel
+
 # ===============================================================================
 
-class APM:
+__all__ = ['APM']
+
+
+class APM(object):
+
     '''
     APM
     This Program is a python package which implements Automatic State Partitioning
@@ -52,7 +61,13 @@ class APM:
         The label of each point in an integer in [0, n_microstates]
     '''
 
-    def __init__(self, metric='rmsd', random_state=None, n_macrostates=6, max_iter=50, lag_time=10, sub_clus=2):
+    def __init__(self,
+                 metric='rmsd',
+                 random_state=None,
+                 n_macrostates=6,
+                 max_iter=50,
+                 lag_time=10,
+                 sub_clus=2):
         # lag time in number of entries in assignment file (int).
 
         self.n_macrostates = n_macrostates
@@ -68,7 +83,7 @@ class APM:
         self.__micro_stack = []
 
         #Attributes:
-        self._labels_ = None
+        self.labels_ = None
         self.__temp_labels_ = None
         #self.transmat_ = None
 
@@ -84,32 +99,33 @@ class APM:
         self.X = X
         self._run()
         t1 = time.time()
-        print "APM clustering Time Cost:", t1 - t0
+        print("APM clustering Time Cost:", t1 - t0)
         return self
 
     def _run(self):
         """Do the APM lumping.
         """
-        print "Doing APM Clustering..."
+        print("Doing APM Clustering...")
         # Start looping for maxIter times
         n_macrostates = 1  # initialized as 1 because no macrostate exist in loop 0
-        metaQ=-1.0
-        prevQ=-1.0
-        global_maxQ=-1.0
-        local_maxQ=-1.0
+        metaQ = -1.0
+        prevQ = -1.0
+        global_maxQ = -1.0
+        local_maxQ = -1.0
 
-        for iter in xrange(self.max_iter):
+        for iter in range(self.max_iter):
             self.__max_state = -1
             self.__micro_stack = []
-            for k in xrange(n_macrostates):
-                self._do_split(micro_state=k,  sub_clus=self.sub_clus)
+            for k in range(n_macrostates):
+                self._do_split(micro_state=k, sub_clus=self.sub_clus)
                 self._do_time_clustering(macro_state=k)
 
             # do Lumping
             n_micro_states = np.amax(self.__temp_labels_) + 1
             if n_micro_states > self.n_macrostates:
-                print "PCCA Lumping...",n_micro_states, "microstates"
-                self.__temp_MacroAssignments_ = self._do_lumping(n_macrostates=n_macrostates)
+                print("PCCA Lumping...", n_micro_states, "microstates")
+                self.__temp_MacroAssignments_ = self._do_lumping(
+                    n_macrostates=n_macrostates)
                 #self.__temp_labels_ = [copy.copy(element) for element in self.__temp_MacroAssignments_]
 
                 #Calculate Metastabilty
@@ -117,11 +133,13 @@ class APM:
                 metaQ = self.__temp_transmat_.diagonal().sum()
                 metaQ /= len(self.__temp_transmat_)
             else:
-                self.__temp_MacroAssignments_ =[copy.copy(element) for element in self.__temp_labels_]
+                self.__temp_MacroAssignments_ = [
+                    copy.copy(element) for element in self.__temp_labels_
+                ]
 
             # Optimization / Monte-Carlo
             acceptedMove = False
-            MCacc = np.exp(metaQ*metaQ - prevQ*prevQ)
+            MCacc = np.exp(metaQ * metaQ - prevQ * prevQ)
 
             if MCacc > 1.0:
                 MCacc = 1.0
@@ -134,37 +152,50 @@ class APM:
                 local_maxQ = metaQ
                 if metaQ > global_maxQ:
                     global_maxQ = metaQ
-                    self.MacroAssignments_ = [copy.copy(element) for element in self.__temp_MacroAssignments_]
-                    self._labels_ =  [copy.copy(element) for element in self.__temp_labels_]
-                    np.savetxt("MacroAssignments.txt", self.MacroAssignments_, fmt="%d")
-                    np.savetxt("MicroAssignments.txt", self._labels_, fmt="%d")
+                    self.MacroAssignments_ = [
+                        copy.copy(element)
+                        for element in self.__temp_MacroAssignments_
+                    ]
+                    self.labels_ = [copy.copy(element)
+                                     for element in self.__temp_labels_]
+                    #np.savetxt("MacroAssignments.txt",
+                    #           self.MacroAssignments_,
+                    #           fmt="%d")
+                    #np.savetxt("MicroAssignments.txt", self.labels_, fmt="%d")
                     self.transmat_ = self.__temp_transmat_
 
-            print "Loop:", iter, "AcceptedMove?", acceptedMove, "metaQ:", metaQ, "prevQ:", prevQ, "global_maxQ:", global_maxQ, "local_maxQ:", local_maxQ, "macroCount:", n_macrostates
+            print("Loop:", iter, "AcceptedMove?", acceptedMove, "metaQ:", metaQ, "prevQ:", prevQ, "global_maxQ:", global_maxQ, "local_maxQ:", local_maxQ, "macroCount:", n_macrostates)
             #set n_macrostates
             n_macrostates = self.n_macrostates
-            self.__temp_labels_ = [copy.copy(element) for element in self.__temp_MacroAssignments_]
+            self.__temp_labels_ = [copy.copy(element)
+                                   for element in self.__temp_MacroAssignments_
+                                   ]
 
     def _get_Lagtime(self, micro_state=None, macro_state=None):
         if self._get_RelaxProb(micro_state, macro_state) > 0.6321206:
             return self.lag_time
         else:
-            return 0 #infinity in this case
+            return 0  #infinity in this case
 
     def _get_RelaxProb(self, micro_state=None, macro_state=None):
         count_trans = 0
         count_relax = 0
-        for k in xrange(len(self.X)):
+        for k in range(len(self.X)):
             X_len = len(self.X[k])
-            for i in xrange(X_len-self.lag_time):
+            for i in range(X_len - self.lag_time):
                 # if it starts at the desired state and ends at the same trajectory, count as one transition
-                if self.__temp_labels_[k][i] == micro_state and self.__temp_MacroAssignments_[k][i] == macro_state:
+                if self.__temp_labels_[k][
+                        i] == micro_state and self.__temp_MacroAssignments_[k][
+                            i] == macro_state:
                     count_trans += 1
                     # if it does not end at the same state, count as one relaxation
-                    if self.__temp_labels_[k][i + self.lag_time] != micro_state or self.__temp_MacroAssignments_[k][i + self.lag_time] != macro_state:
+                    if self.__temp_labels_[k][
+                            i +
+                            self.lag_time] != micro_state or self.__temp_MacroAssignments_[
+                                k][i + self.lag_time] != macro_state:
                         count_relax += 1
         if count_trans > 0:
-            relax_prob = float(count_relax) / float(count_trans)
+            relax_prob = old_div(float(count_relax), float(count_trans))
             return relax_prob
         else:
             return 1.0
@@ -175,40 +206,46 @@ class APM:
             #print "Stack is emtpy"
             return
         else:
-            print "Stack:", self.__micro_stack
-            micro_state = self.__micro_stack[-1]  # last element of self.__micro_stack
+            print("Stack:", self.__micro_stack)
+            micro_state = self.__micro_stack[
+                -1
+            ]  # last element of self.__micro_stack
             if self._get_Lagtime(micro_state, macro_state) is 0:
                 # split if the relaxation time is too long
-                self._do_split(micro_state=micro_state,  sub_clus=self.sub_clus)
+                self._do_split(micro_state=micro_state, sub_clus=self.sub_clus)
             else:
                 # accept if the relaxation time is fine
                 self.__micro_stack.pop(-1)
 
-            self._do_time_clustering(macro_state=macro_state)  # Note: recursion
+            self._do_time_clustering(macro_state=macro_state
+                                     )  # Note: recursion
         return
 
     def _do_split(self, micro_state=None, sub_clus=2):
-        micro_clusterer = KCenters(n_clusters=sub_clus, metric=self.metric, random_state=0)
+        micro_clusterer = KCenters(n_clusters=sub_clus,
+                                   metric=self.metric,
+                                   random_state=0)
         if self.__temp_labels_ is not None:
             sub_X = []
             sub_indices = []
 
             #Get sub trjas
-            for i in xrange(len(self.X)):
+            for i in range(len(self.X)):
                 sub_X.append([])
                 sub_indices.append([])
-                sub_indices[i] = np.where(self.__temp_labels_[i]==micro_state)
+                sub_indices[i] = np.where(self.__temp_labels_[i] ==
+                                          micro_state)
                 sub_X[i] = self.X[i][sub_indices[i]]
 
             micro_clusterer.fit(sub_X)
             sub_labels_ = micro_clusterer.labels_
-            for i in xrange(len(self.__temp_labels_)):
+            for i in range(len(self.__temp_labels_)):
                 local_max_state = max(self.__temp_labels_[i])
                 if local_max_state > self.__max_state:
                     self.__max_state = local_max_state
 
             #rename the cluster number on self.__temp_labels_
-            for i in xrange(len(sub_labels_)):
+            for i in range(len(sub_labels_)):
                 new_index = 0
                 for j in sub_indices[i][0]:
                     if sub_labels_[i][new_index] == 0:
