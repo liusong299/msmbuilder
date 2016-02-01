@@ -21,13 +21,10 @@ from .core import (_MappingTransformMixin, _transition_counts, _dict_compose,
 class ContinuousTimeMSM(BaseEstimator, _MappingTransformMixin, _SampleMSMMixin):
     """Reversible first order master equation model
 
-    This model fits a reversible continuous-time Markov model for labeled
-    sequence data.
-
-    .. warning::
-
-        This model is currently (as of December 2, 2014) experimental, and may
-        undergo significant changes or bugfixes in upcoming releases.
+    This model fits a continuous-time Markov model (master equation) from
+    discrete-time integer labeled timeseries. The key estimated attribute,
+    ``ratemat_``, is a matrix containing the estimated first order rate
+    constants between the states. See [1] for details.
 
     Parameters
     ----------
@@ -50,6 +47,18 @@ class ContinuousTimeMSM(BaseEstimator, _MappingTransformMixin, _SampleMSMMixin):
         the sequences are simply subsampled at an interval of ``lag_time``.
     verbose : bool, default=False
         Verbosity level
+    guess : {'log', 'pseudo', array}, default='log'
+        Method for determining the initial guess rate matrix, as input to the
+        optimizer.
+
+        'log':
+            Initialize from matrix log of the MLE transition matrix
+        'pseudo':
+            Initialize from the pseudo-generator, using the 1st order taylor
+            expansion of the matrix exponential.
+
+        Otherwise, supply your own (n_states_ x n_states_) numpy array as a
+        guess rate matrix.
 
     Attributes
     ----------
@@ -87,17 +96,24 @@ class ContinuousTimeMSM(BaseEstimator, _MappingTransformMixin, _SampleMSMMixin):
     right_eigenvectors_ : array of shape=(n_timescales+1)
         Dominant right eigenvectors of the rate matrix,
 
+    References
+    ----------
+    .. [1] R. T. McGibbon and V. S. Pande, Efficient maximum likelihood
+       parameterization of continuous-time Markov processes." J. Chem. Phys.
+       143, 034109 (2015) http://dx.doi.org/10.1063/1.4926516
+
     See Also
     --------
     MarkovStateModel : discrete-time analog
     """
     def __init__(self, lag_time=1, n_timescales=None, ergodic_cutoff=1,
-                 sliding_window=True, verbose=False):
+                 sliding_window=True, verbose=False, guess='log'):
         self.lag_time = lag_time
         self.n_timescales = n_timescales
         self.ergodic_cutoff = ergodic_cutoff
         self.verbose = verbose
         self.sliding_window = sliding_window
+        self.guess = guess
 
         self.theta_ = None
         self.ratemat_ = None
@@ -113,6 +129,7 @@ class ContinuousTimeMSM(BaseEstimator, _MappingTransformMixin, _SampleMSMMixin):
         self.eigenvalues_ = None
         self.left_eigenvectors_ = None
         self.right_eigenvectors_ = None
+        self.percent_retained_ = None
 
     def _build_counts(self, sequences):
         sequences = list_of_1d(sequences)
@@ -125,12 +142,13 @@ class ContinuousTimeMSM(BaseEstimator, _MappingTransformMixin, _SampleMSMMixin):
         if self.ergodic_cutoff >= 1:
             # step 2. restrict the counts to the maximal strongly ergodic
             # subgraph
-            countsmat, mapping2 = _strongly_connected_subgraph(
+            countsmat, mapping2, self.percent_retained_ = _strongly_connected_subgraph(
                 lag_time * raw_counts, self.ergodic_cutoff, self.verbose)
             mapping = _dict_compose(mapping, mapping2)
         else:
             # no ergodic trimming.
             countsmat = raw_counts
+            self.percent_retained_ = 100
 
         self.n_states_ = countsmat.shape[0]
         self.countsmat_ = countsmat
@@ -138,7 +156,6 @@ class ContinuousTimeMSM(BaseEstimator, _MappingTransformMixin, _SampleMSMMixin):
 
         return countsmat
 
-    @experimental('ContinuousTimeMSM')
     def fit(self, sequences, y=None):
         self._build_counts(sequences)
         return self._fit()
@@ -276,10 +293,19 @@ class ContinuousTimeMSM(BaseEstimator, _MappingTransformMixin, _SampleMSMMixin):
         if self.theta_ is not None:
             return self.theta_
 
-        transmat, pi = _transmat_mle_prinz(countsmat)
-        K = np.real(scipy.linalg.logm(transmat)) / self.lag_time
-        S = np.multiply(np.sqrt(np.outer(pi, 1/pi)), K)
+        if self.guess == 'log':
+            transmat, pi = _transmat_mle_prinz(countsmat)
+            K = np.real(scipy.linalg.logm(transmat)) / self.lag_time
 
+        elif self.guess == 'pseudo':
+            transmat, pi = _transmat_mle_prinz(countsmat)
+            K = (transmat - np.eye(self.n_states_)) / self.lag_time
+
+        elif isinstance(self.guess, np.ndarray):
+            pi = _solve_ratemat_eigensystem(self.guess)[1][:, 0]
+            K = self.guess
+
+        S = np.multiply(np.sqrt(np.outer(pi, 1/pi)), K)
         sflat = np.maximum(S[np.triu_indices_from(countsmat, k=1)], 0)
         theta0 = np.concatenate((sflat, np.log(pi)))
         return theta0

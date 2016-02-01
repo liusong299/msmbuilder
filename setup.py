@@ -52,7 +52,7 @@ except ImportError:
     sys.exit(1)
 
 # #########################
-VERSION = '3.3.0.dev0'
+VERSION = '3.4.0.dev0'
 ISRELEASED = False
 __version__ = VERSION
 # #########################
@@ -63,14 +63,13 @@ Intended Audience :: Developers
 License :: OSI Approved :: GNU Lesser General Public License v2 or later (LGPLv2+)
 Programming Language :: C++
 Programming Language :: Python
-Development Status :: 4 - Beta
+Development Status :: 5 - Production/Stable
 Topic :: Software Development
 Topic :: Scientific/Engineering
 Operating System :: POSIX
 Operating System :: Unix
 Operating System :: MacOS
 Programming Language :: Python :: 2
-Programming Language :: Python :: 2.6
 Programming Language :: Python :: 2.7
 Programming Language :: Python :: 3
 Programming Language :: Python :: 3.3
@@ -123,9 +122,19 @@ extensions.append(
 extensions.append(
     Extension('msmbuilder.msm._ratematrix',
               sources=[pjoin(MSMDIR, '_ratematrix.pyx')],
+              language='c++',
               extra_compile_args=compiler.compiler_args_openmp,
               libraries=compiler.compiler_libraries_openmp,
               include_dirs=['msmbuilder/src', np.get_include()]))
+
+extensions.append(
+    Extension('msmbuilder.decomposition._speigh',
+              sources=[pjoin('msmbuilder', 'decomposition', '_speigh.pyx')],
+              language='c++',
+              extra_compile_args=compiler.compiler_args_openmp,
+              libraries=compiler.compiler_libraries_openmp,
+              include_dirs=['msmbuilder/src', np.get_include()]))
+
 
 extensions.append(
     Extension('msmbuilder.msm._metzner_mcmc_fast',
@@ -154,30 +163,37 @@ extensions.append(
                        pjoin(CLUSTERDIR, 'src', 'kmedoids.cc')],
               include_dirs=[np.get_include()]))
 
+
+# To get debug symbols on Windows, use
+# extra_link_args=['/DEBUG']
+# extra_compile_args=['/Zi']
+
 extensions.append(
-    Extension('msmbuilder.hmm._ghmm',
+    Extension('msmbuilder.hmm.gaussian',
               language='c++',
-              sources=[pjoin(HMMDIR, 'wrappers/GaussianHMMCPUImpl.pyx')] +
-                      glob.glob(pjoin(HMMDIR, 'src/*.c')) +
-                      glob.glob(pjoin(HMMDIR, 'src/*.cpp')),
+              sources=[pjoin(HMMDIR, 'gaussian.pyx'),
+                       pjoin(HMMDIR, 'src/GaussianHMMFitter.cpp')],
               libraries=compiler.compiler_libraries_openmp,
               extra_compile_args=compiler.compiler_args_sse3 + compiler.compiler_args_openmp,
               include_dirs=[np.get_include(),
-                            "msmbuilder/src",
+                            HMMDIR,
                             pjoin(HMMDIR, 'src/include/'),
                             pjoin(HMMDIR, 'src/')]))
 
 extensions.append(
-    Extension('msmbuilder.hmm._vmhmm',
-              sources=[pjoin(HMMDIR, 'vonmises/vmhmm.c'),
-                       #pjoin(HMMDIR, 'vonmises/test.c'),
-                       pjoin(HMMDIR, 'vonmises/vmhmmwrap.pyx'),
-                       pjoin(HMMDIR, 'vonmises/spleval.c'),
+    Extension('msmbuilder.hmm.vonmises',
+              language='c++',
+              sources=[pjoin(HMMDIR, 'vonmises.pyx'),
+                       pjoin(HMMDIR, 'src/VonMisesHMMFitter.cpp'),
                        pjoin(HMMDIR, 'cephes/i0.c'),
                        pjoin(HMMDIR, 'cephes/chbevl.c')],
+              libraries=compiler.compiler_libraries_openmp,
+              extra_compile_args=compiler.compiler_args_sse3 + compiler.compiler_args_openmp,
               include_dirs=[np.get_include(),
-                            pjoin(HMMDIR, 'cephes'),
-                            'msmbuilder/src/f2py']))
+                            HMMDIR,
+                            pjoin(HMMDIR, 'src/include/'),
+                            pjoin(HMMDIR, 'src/'),
+                            pjoin(HMMDIR, 'cephes/')]))
 
 write_version_py(VERSION, ISRELEASED, filename='msmbuilder/version.py')
 setup(name='msmbuilder',

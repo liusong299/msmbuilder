@@ -6,11 +6,14 @@ import numpy as np
 import mdtraj as md
 
 from ..utils.progressbar import ProgressBar, Percentage, Bar, ETA
+from ..utils import verbosedump
 from ..cmdline import NumpydocClassCommand, argument, exttype, stripquotestype
 from ..dataset import dataset, MDTrajDataset
 from ..featurizer import (AtomPairsFeaturizer, SuperposeFeaturizer,
                           DRIDFeaturizer, DihedralFeaturizer,
-                          ContactFeaturizer, GaussianSolventFeaturizer)
+                          ContactFeaturizer, GaussianSolventFeaturizer,
+                          KappaAngleFeaturizer, AlphaAngleFeaturizer,
+                          StrucRMSDFeaturizer)
 
 
 class FeaturizerCommand(NumpydocClassCommand):
@@ -25,36 +28,30 @@ class FeaturizerCommand(NumpydocClassCommand):
         help='''Chunk size for loading trajectories using mdtraj.iterload''',
         default=10000, type=int)
     out = argument(
-        '--out',
-        help='DEPRECATED: Output path. Please use --transformed',
-        type=exttype('/'))
+        '-o', '--out', help='''Path to save featurizer instance using
+        the pickle protocol''',
+        default='', type=exttype('.pkl'))
     transformed = argument(
         '--transformed',
         help="Output path for transformed data",
-        type=exttype('/'))
+        type=exttype('/'), required=True)
     stride = argument(
         '--stride', default=1, type=int,
         help='Load only every stride-th frame')
 
-    def _deprecation_logic(self):
-        """Control deprecation of --out"""
-        if self.out is None and self.transformed is None:
-            self.error("Please specify --transformed")
-        if self.transformed is None:
-            warnings.warn("--out is deprecated. Please use --transformed")
-            self.transformed = self.out
-
     def start(self):
-        self._deprecation_logic()
-
         if os.path.exists(self.transformed):
             self.error('File exists: %s' % self.transformed)
+        if os.path.exists(self.out):
+            self.error('File exists: %s' % self.out)
 
         print(self.instance)
-        if os.path.exists(os.path.expanduser(self.top)):
-            top = os.path.expanduser(self.top)
-        else:
+        if self.top.strip() == "":
             top = None
+        else:
+            top = os.path.expanduser(self.top)
+            err = "Couldn't find topology file '{}'".format(top)
+            assert os.path.exists(top), err
 
         input_dataset = MDTrajDataset(self.trjs, topology=top, stride=self.stride, verbose=False)
         out_dataset = input_dataset.create_derived(self.transformed, fmt='dir-npy')
@@ -75,6 +72,14 @@ class FeaturizerCommand(NumpydocClassCommand):
         print("  >>> from msmbuilder.dataset import dataset")
         print("  >>> ds = dataset('%s')\n" % self.transformed)
 
+        if self.out is not '':
+            verbosedump(self.instance, self.out)
+            print("To load this %s object interactively inside an IPython\n"
+                  "shell or notebook, run: \n" % self.klass.__name__)
+            print("  $ ipython")
+            print("  >>> from msmbuilder.utils import load")
+            print("  >>> model = load('%s')\n" % self.out)
+
 
 class DihedralFeaturizerCommand(FeaturizerCommand):
     _concrete = True
@@ -83,6 +88,15 @@ class DihedralFeaturizerCommand(FeaturizerCommand):
     $ msmb DihedralFeaturizer --trjs './trajectories/*.h5' \\
         --transformed dihedrals-withchi --types phi psi chi1
     '''
+
+class KappaAngleFeaturizerCommand(FeaturizerCommand):
+    _concrete = True
+    klass = KappaAngleFeaturizer
+
+
+class AlphaAngleFeaturizerCommand(FeaturizerCommand):
+    _concrete = True
+    klass = AlphaAngleFeaturizer
 
 
 class AtomPairsFeaturizerCommand(FeaturizerCommand):
@@ -95,12 +109,39 @@ class AtomPairsFeaturizerCommand(FeaturizerCommand):
         return np.loadtxt(fn, dtype=int, ndmin=2)
 
 
+class StrucRMSDFeaturizerCommand(FeaturizerCommand):
+    klass = StrucRMSDFeaturizer
+    _concrete = True
+
+    def _reference_traj_type(self, fn):
+        if self.top.strip() == "":
+            top = None
+        else:
+            top = os.path.expanduser(self.top)
+            err = ("Couldn't find topology file '{}' "
+                   "when loading reference trajectory".format(top))
+            assert os.path.exists(top), err
+        return md.load(fn, top=top)
+
+    def _atom_indices_type(self, fn):
+        if fn is None:
+            return None
+        return np.loadtxt(fn, dtype=int, ndmin=1)
+
+
 class SuperposeFeaturizerCommand(FeaturizerCommand):
     klass = SuperposeFeaturizer
     _concrete = True
 
     def _reference_traj_type(self, fn):
-        return md.load(fn)
+        if self.top.strip() == "":
+            top = None
+        else:
+            top = os.path.expanduser(self.top)
+            err = ("Couldn't find topology file '{}' "
+                   "when loading reference trajectory".format(top))
+            assert os.path.exists(top), err
+        return md.load(fn, top=top)
 
     def _atom_indices_type(self, fn):
         if fn is None:

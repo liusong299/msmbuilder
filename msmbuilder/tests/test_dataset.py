@@ -1,15 +1,15 @@
 from __future__ import print_function, absolute_import, division
+
 import os
 import shutil
 import tempfile
-from six.moves import cPickle
 
 import numpy as np
-from nose.tools import assert_raises
-from msmbuilder.dataset import dataset, _keynat, NumpyDirDataset
 from mdtraj.testing import get_fn
+from nose.tools import assert_raises
 from sklearn.externals.joblib import Parallel, delayed
 
+from msmbuilder.dataset import dataset
 from .test_commands import tempdir
 
 
@@ -17,7 +17,7 @@ def test_1():
     path = tempfile.mkdtemp()
     shutil.rmtree(path)
     try:
-        X = np.random.randn(10,2)
+        X = np.random.randn(10, 2)
         ds = dataset(path, 'w', 'dir-npy')
         ds[0] = X
         assert set(os.listdir(path)) == set(('PROVENANCE.txt', '00000000.npy'))
@@ -49,8 +49,8 @@ def test_2():
     shutil.rmtree(path2)
     try:
 
-        X = np.random.randn(10,2)
-        Y = np.random.randn(10,2)
+        X = np.random.randn(10, 2)
+        Y = np.random.randn(10, 2)
         ds1 = dataset(path1, 'w', 'dir-npy')
         ds1[0] = X
 
@@ -77,17 +77,15 @@ def test_3():
     path = tempfile.mkdtemp()
     shutil.rmtree(path)
     try:
-         ds = dataset(path, 'w', 'dir-npy')
-         ds[0] = np.random.randn(10,2)
-         ds[1] = np.random.randn(10,2)
-         ds[2] = np.random.randn(10,2)
+        ds = dataset(path, 'w', 'dir-npy')
+        ds[0] = np.random.randn(10, 2)
+        ds[1] = np.random.randn(10, 2)
+        ds[2] = np.random.randn(10, 2)
 
-         np.testing.assert_array_equal(ds[:][0], ds[0])
-         np.testing.assert_array_equal(ds[:][1], ds[1])
-         np.testing.assert_array_equal(ds[:][2], ds[2])
+        np.testing.assert_array_equal(ds[:][0], ds[0])
+        np.testing.assert_array_equal(ds[:][1], ds[1])
+        np.testing.assert_array_equal(ds[:][2], ds[2])
 
-         np.testing.assert_array_equal(ds[1:][0], ds[1])
-         np.testing.assert_array_equal(ds[1:][1], ds[2])
 
     finally:
         shutil.rmtree(path)
@@ -97,12 +95,12 @@ def test_4():
     path = tempfile.mkdtemp()
     shutil.rmtree(path)
     try:
-         ds = dataset(path, 'w', 'dir-npy')
-         ds[0] = np.random.randn(10,2)
-         v = ds.get(0, mmap=True)
-         assert isinstance(v, np.memmap)
-         np.testing.assert_array_equal(ds[0], v)
-         del v  # close the underlying file
+        ds = dataset(path, 'w', 'dir-npy')
+        ds[0] = np.random.randn(10, 2)
+        v = ds.get(0, mmap=True)
+        assert isinstance(v, np.memmap)
+        np.testing.assert_array_equal(ds[0], v)
+        del v  # close the underlying file
     finally:
         shutil.rmtree(path)
 
@@ -113,7 +111,7 @@ def test_mdtraj_1():
     print(ds.get(0))
     print(ds.provenance)
 
-    ds = dataset(get_fn('') + '*.pdb', fmt='mdtraj', atom_indices=[1,2],
+    ds = dataset(get_fn('') + '*.pdb', fmt='mdtraj', atom_indices=[1, 2],
                  verbose=True)
     print(ds.keys())
     print(ds.get(0))
@@ -129,16 +127,13 @@ def test_hdf5_1():
         assert list(ds.keys()) == [0]
         assert len(ds) == 1
 
-        ds[0] = np.random.randn(10,1)
-        ds[1] = np.random.randn(10,2)
-        ds[2] = np.random.randn(10,3)
+        ds[0] = np.random.randn(10, 1)
+        ds[1] = np.random.randn(10, 2)
+        ds[2] = np.random.randn(10, 3)
 
         np.testing.assert_array_equal(ds[:][0], ds[0])
         np.testing.assert_array_equal(ds[:][1], ds[1])
         np.testing.assert_array_equal(ds[:][2], ds[2])
-
-        np.testing.assert_array_equal(ds[1:][0], ds[1])
-        np.testing.assert_array_equal(ds[1:][1], ds[2])
 
         ds.close()
         with dataset('ds.h5') as ds:
@@ -169,32 +164,40 @@ def test_hdf5_3():
         iter_args = (dataset('ds.h5') for _ in range(5))
 
         sums = Parallel(n_jobs=2)(
-            delayed(_sum_helper)(a) for a in iter_args)
+                delayed(_sum_helper)(a) for a in iter_args)
 
         assert all(s == ref_sum for s in sums)
+
+
+import warnings
+
+# TODO: remove union dataset
+warnings.filterwarnings('ignore', message='.*UnionDataset is deprecated.*')
 
 
 def test_union():
     with tempdir():
         # This doesn't work with py2.6
         with dataset('ds1.h5', 'w', 'hdf5') as ds1, \
-             dataset('ds2.h5', 'w', 'hdf5') as ds2:
+                dataset('ds2.h5', 'w', 'hdf5') as ds2:
             ds1[0] = np.random.randn(10, 2)
             ds1[1] = np.random.randn(10)
-            ds2[0] = np.random.randn(10,4)
-            ds2[1] = np.random.randn(10,4)
+            ds2[0] = np.random.randn(10, 4)
+            ds2[1] = np.random.randn(10, 4)
 
             # Compare row sums
             rs1 = np.sum(ds1[0], axis=1) + np.sum(ds2[0], axis=1)
             rs2 = ds1[1] + np.sum(ds2[1], axis=1)
 
-        mds = dataset(['ds1.h5', 'ds2.h5'])
+        mds = dataset(['ds1.h5', 'ds2.h5'], fmt='hdf5-union')
 
         assert len(mds) == 2
         assert mds[0].shape == (10, 6)
         assert mds[1].shape == (10, 5)
         np.testing.assert_array_almost_equal(np.sum(mds[0], axis=1), rs1)
         np.testing.assert_array_almost_equal(np.sum(mds[1], axis=1), rs2)
+
+        mds.close()
 
 
 def test_union_2():
@@ -204,11 +207,10 @@ def test_union_2():
                 dataset('ds2/', 'w', 'dir-npy') as ds2:
             ds1[0] = np.random.randn(10, 2)
             ds1[1] = np.random.randn(10)
-            ds2[0] = np.random.randn(10,4)
-            ds2[1] = np.random.randn(10,4)
+            ds2[0] = np.random.randn(10, 4)
+            ds2[1] = np.random.randn(10, 4)
 
-
-        mds = dataset(['ds1', 'ds2'])
+        mds = dataset(['ds1', 'ds2'], fmt='dir-npy-union')
         mds_out = mds.create_derived('derived', fmt='dir-npy')
         assert len(mds_out.provenance.split('\n')) > 0
 
@@ -220,11 +222,11 @@ def test_union_3():
                 dataset('ds2/', 'w', 'dir-npy') as ds2:
             ds1[0] = np.random.randn(10, 2)
             ds1[1] = np.random.randn(10)
-            ds2[0] = np.random.randn(10,4)
+            ds2[0] = np.random.randn(10, 4)
             # Uneven length!
 
         with assert_raises(ValueError):
-            mds = dataset(['ds1', 'ds2'])
+            mds = dataset(['ds1', 'ds2'], fmt='dir-npy-union')
 
 
 def test_order_1():
@@ -258,8 +260,6 @@ def test_append_dirnpy():
         np.testing.assert_array_equal(ds[:][1], ds[1])
         np.testing.assert_array_equal(ds[:][2], ds[2])
 
-        np.testing.assert_array_equal(ds[1:][0], ds[1])
-        np.testing.assert_array_equal(ds[1:][1], ds[2])
 
     finally:
         shutil.rmtree(path)
@@ -273,14 +273,14 @@ def test_items():
         ds[1] = np.random.randn(10, 2)
         ds[5] = np.random.randn(10, 3)
 
-        # NOTE!
-        # ds[:] does not work for non-contiguous keys.
-
         keys = [0, 1, 5]
 
         for i, (k, v) in enumerate(ds.items()):
             assert k == keys[i]
             np.testing.assert_array_equal(ds[k], v)
 
-        ds.close()
+        np.testing.assert_array_equal(ds[:][0], ds[0])
+        np.testing.assert_array_equal(ds[:][1], ds[1])
+        np.testing.assert_array_equal(ds[:][2], ds[5])
 
+        ds.close()

@@ -2,29 +2,23 @@
 .. currentmodule:: msmbuilder.featurizer
 
 
-Featurization and Distance Metrics
-==================================
+Featurization
+=============
 
-Background
-----------
+Many algorithms require that the input data be vectors in a (euclidean)
+vector space. This includes :class:`~msmbuilder.cluster.KMeans` clustering,
+:class:`~msmbuilder.decomposition.tICA`, and others.
 
-Many analyses require that the input data be vectors in a (euclidean) vector
-space. This includes :class:`~msmbuilder.cluster.KMeans` clustering,
-:class:`~msmbuilder.decomposition.tICA` and others. Furthermore, other analyses like
-:class:`~msmbuilder.cluster.KCenters` clustering require that, if the data are not
-vectors, that a pairwise distance metric be supplied.
-
-One of the complexities of featurizing molecular dynamics trajectories is that
-during a simulation, the system is generally permitted to tumble (rotate)
-in 3D, and the timescale for this tumbling is pretty fast. For a protein in bulk solvent, there's no special rotational reference frame either. So it's often desirable to remove rotational motion either via featurization or via
-a distance metric that is insensitive to rotations. This can be done by featurizing with internal coordinates.
+Since there's usually no special rotational or translational reference
+frame in a MD simulation, it's often desirable to remove rotational and
+translational motion via featurization that is insensitive to rotations and
+translations. 
 
 Featurizations
 --------------
 
 .. autosummary::
-    :toctree: generated/
-    :template: class.rst
+    :toctree: _featurization/
 
     AtomPairsFeaturizer
     ContactFeaturizer
@@ -36,7 +30,18 @@ Featurizations
     SuperposeFeaturizer
 
 
-Distance Metrics
-----------------
+Alternative to Featurization
+----------------------------
 
-Some :ref:`clustering <cluster>` methods let you pass in a custom distance metric. In that case, the input to ``fit()`` may be a list of MD trajectories instead of a list of numpy arrays. Clustering methods that allow this currently include :class:`~msmbuilder.cluster.KCenters` and :class:`~msmbuilder.cluster.LandmarkAgglomerative`. See their documentation for details.
+Many algorithms require vectorizable data. Other algorithms only require a
+pairwise distance metric, e.g. RMSD between two protein conformations. In
+general, you can define a pairwise distance among vectorized data, but you
+cannot embed data into a vector space only from pairwise distance.
+
+Some :ref:`clustering <cluster>` methods let you use an arbitrary distance
+metric, including RMSD. In this case, the input to ``fit()`` may be a list
+of MD trajectories instead of a list of numpy arrays. Clustering methods
+that allow this currently include :class:`~msmbuilder.cluster.KCenters` and
+:class:`~msmbuilder.cluster.KMedoids`.
+
+.. vim: tw=75

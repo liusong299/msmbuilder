@@ -40,10 +40,8 @@ import itertools
 import warnings
 
 import numpy as np
-from ..utils import list_of_1d
 from ..base import BaseEstimator
-from .core import (_MappingTransformMixin, _dict_compose,
-                   _strongly_connected_subgraph, _transition_counts,
+from .core import (_MappingTransformMixin,
                    _solve_msm_eigensystem)
 from ._metzner_mcmc_fast import metzner_mcmc_fast
 from ._metzner_mcmc_slow import metzner_mcmc_slow
@@ -149,7 +147,7 @@ class BayesianMarkovStateModel(BaseEstimator, _MappingTransformMixin):
        matrices for given trajectory data." Phys. Rev. E 80 021106 (2009)
     """
     def __init__(self, lag_time=1, n_samples=100, n_steps=0, n_chains=None,
-                 n_timescales=None, reversible=True, ergodic_cutoff=1,
+                 n_timescales=None, reversible=True, ergodic_cutoff='on',
                  prior_counts=0, sliding_window=True, random_state=None,
                  sampler='metzner', verbose=False):
         self.lag_time = lag_time
@@ -170,23 +168,10 @@ class BayesianMarkovStateModel(BaseEstimator, _MappingTransformMixin):
         self.all_transmats_ = None
         self.n_states_ = None
         self._is_dirty = True
+        self.percent_retained_ = None
 
     def fit(self, sequences, y=None):
-        sequences = list_of_1d(sequences)
-        if int(self.lag_time) <= 0:
-            raise ValueError('Invalid lag_time: %s' % self.lag_time)
-        raw_counts, mapping = _transition_counts(
-            sequences, int(self.lag_time), sliding_window=self.sliding_window)
-
-        if self.ergodic_cutoff >= 1:
-            self.countsmat_, mapping2 = _strongly_connected_subgraph(
-                self.lag_time * raw_counts, self.ergodic_cutoff, self.verbose)
-            self.mapping_ = _dict_compose(mapping, mapping2)
-        else:
-            self.countsmat_ = raw_counts
-            self.mapping_ = mapping
-
-        self.n_states_ = self.countsmat_.shape[0]
+        self._setup(sequences)
         fit_method_map = {
             True: self._fit_reversible,
             False: self._fit_non_reversible}
@@ -201,7 +186,7 @@ class BayesianMarkovStateModel(BaseEstimator, _MappingTransformMixin):
         return self
 
     def _fit_reversible(self, countsmat):
-        if self.ergodic_cutoff < 1:
+        if self._parse_ergodic_cutoff() < 1:
             with warnings.catch_warnings(record=True):
                 warnings.simplefilter("always")
                 warnings.warn("reversible=True and ergodic_cutoff < 1 "
