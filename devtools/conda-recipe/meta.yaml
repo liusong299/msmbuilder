@@ -1,10 +1,9 @@
 package:
   name: msmbuilder-dev
-  version: !!str 3.3.0.dev0
+  version: "3.4.0.dev0"
 
-#source:
-#  fn: master.zip
-#  url: https://github.com/msmbuilder/msmbuilder/archive/master.zip
+source:
+  path: ../../
 
 build:
   preserve_egg_dir: True
@@ -18,12 +17,12 @@ requirements:
     - python
     - setuptools
     - cython
-    - numpy
+    - numpy x.x
     - mdtraj
   run:
     - python
     - setuptools
-    - numpy
+    - numpy x.x
     - scipy
     - pandas
     - six
@@ -39,13 +38,14 @@ test:
     - nose
     - munkres
     - numdifftools
-    - matplotlib
     - statsmodels
+    - hmmlearn
+    - cvxpy # [not win]
   imports:
     - msmbuilder
   commands:
     - msmb -h
-    - nosetests msmbuilder -v
+    - nosetests msmbuilder.tests -v
 
 
 about:

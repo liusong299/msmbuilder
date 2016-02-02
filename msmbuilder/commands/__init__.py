@@ -1,8 +1,9 @@
 from __future__ import absolute_import
 from .featurizer import (AtomPairsFeaturizerCommand, ContactFeaturizerCommand,
                          DihedralFeaturizerCommand, DRIDFeaturizerCommand,
-                         SuperposeFeaturizerCommand)
-from .fit import GaussianFusionHMMCommand
+                         SuperposeFeaturizerCommand, KappaAngleFeaturizerCommand,
+                         AlphaAngleFeaturizerCommand, StrucRMSDFeaturizerCommand)
+from .fit import GaussianHMMCommand
 from .fit_transform import KMeansCommand, KCentersCommand
 from .transform import TransformCommand
 from .example_datasets import AlanineDipeptideDatasetCommand

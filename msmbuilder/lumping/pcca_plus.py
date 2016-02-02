@@ -21,7 +21,8 @@ class PCCAPlus(PCCA):
     do_minimization : bool, optional
         If False, skip the optimization of the transformation matrix.
         In general, minimization is recommended.
-    objective_function: {'crisp_metastablility', 'metastability', 'metastability'}
+    objective_function: {'crisp_metastablility', 'metastability',
+                         'metastability'}
         Possible objective functions.  See objective for details.
     kwargs : optional
         Additional keyword arguments to be passed to MarkovStateModel.  See
@@ -94,9 +95,9 @@ class PCCAPlus(PCCA):
 
         super(PCCAPlus, self).__init__(n_macrostates, **kwargs)
         obj_functions = dict(
-            crispness=crispness,
-            metastability=metastability,
-            crisp_metastability=crisp_metastability
+                crispness=crispness,
+                metastability=metastability,
+                crisp_metastability=crisp_metastability
         )
         try:
             self._objective_function = obj_functions[objective_function]
@@ -156,24 +157,22 @@ class PCCAPlus(PCCA):
 
         def obj(x):
             return -1 * self._objective_function(
-                x, self.transmat_, right_eigenvectors, square_map,
-                self.populations_
+                    x, self.transmat_, right_eigenvectors, square_map,
+                    self.populations_
             )
 
-        # TODO: use scipy.optimize.basinhopping
-        alpha = scipy.optimize.anneal(
-            obj, alpha, lower=0.0, maxiter=1, schedule="boltzmann",
-            dwell=1000, feps=1E-3, boltzmann=2.0, T0=1.0
-        )[0]
+        alpha = scipy.optimize.basinhopping(
+                obj, alpha, niter_success=1000,
+        )['x']
 
         alpha = scipy.optimize.fmin(
-            obj, alpha, full_output=True, xtol=1E-4, ftol=1E-4,
-            maxfun=5000, maxiter=100000
+                obj, alpha, full_output=True, xtol=1E-4, ftol=1E-4,
+                maxfun=5000, maxiter=100000
         )[0]
 
         if np.isneginf(obj(alpha)):
             raise ValueError(
-                "Error: minimization has not located a feasible point.")
+                    "Error: minimization has not located a feasible point.")
 
         A = to_square(alpha, square_map)
         return A
@@ -208,7 +207,8 @@ def metastability(alpha, T, right_eigenvectors, square_map, pi):
 
     num_micro, num_eigen = right_eigenvectors.shape
 
-    A, chi, mapping = calculate_fuzzy_chi(alpha, square_map, right_eigenvectors)
+    A, chi, mapping = calculate_fuzzy_chi(alpha, square_map,
+                                          right_eigenvectors)
 
     # If current point is infeasible or leads to degenerate lumping.
     if (len(np.unique(mapping)) != right_eigenvectors.shape[1] or
@@ -261,8 +261,8 @@ def crisp_metastability(alpha, T, right_eigenvectors, square_map, pi):
     chi[np.arange(num_micro), mapping] = 1.
 
     # If current point is infeasible or leads to degenerate lumping.
-    if (len(np.unique(mapping)) != right_eigenvectors.shape[1]
-            or has_constraint_violation(A, right_eigenvectors)):
+    if (len(np.unique(mapping)) != right_eigenvectors.shape[1] or
+            has_constraint_violation(A, right_eigenvectors)):
         return -1.0 * np.inf
 
     obj = 0.0
@@ -300,7 +300,8 @@ def crispness(alpha, T, right_eigenvectors, square_map, pi):
     defined in [3].
     """
 
-    A, chi, mapping = calculate_fuzzy_chi(alpha, square_map, right_eigenvectors)
+    A, chi, mapping = calculate_fuzzy_chi(alpha, square_map,
+                                          right_eigenvectors)
 
     # If current point is infeasible or leads to degenerate lumping.
     if (len(np.unique(mapping)) != right_eigenvectors.shape[1] or
@@ -445,7 +446,7 @@ def index_search(right_eigenvectors):
 
     # first vertex: row with largest norm
     index[0] = np.argmax(
-        [norm(right_eigenvectors[i]) for i in range(num_micro)])
+            [norm(right_eigenvectors[i]) for i in range(num_micro)])
 
     ortho_sys = right_eigenvectors - np.outer(np.ones(num_micro),
                                               right_eigenvectors[index[0]])
