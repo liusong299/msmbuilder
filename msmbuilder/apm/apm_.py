@@ -1,7 +1,7 @@
 from __future__ import absolute_import, print_function, division
 #from builtins import range
 #from builtins import object
-#from past.utils import old_div
+from past.utils import old_div
 __author__ = 'LIU Song <stephenliu1989@gmail.com>'
 __contributors__ = "Fu Kit SHEONG, Xuhui HUANG"
 __version__ = "0.9"
