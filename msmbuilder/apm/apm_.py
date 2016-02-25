@@ -1,7 +1,7 @@
 from __future__ import absolute_import, print_function, division
-#from builtins import range
-#from builtins import object
-#from past.utils import old_div
+from builtins import range
+from builtins import object
+from past.utils import old_div
 __author__ = 'LIU Song <stephenliu1989@gmail.com>'
 __contributors__ = "Fu Kit SHEONG, Xuhui HUANG"
 __version__ = "0.9"
@@ -23,7 +23,7 @@ from msmbuilder.msm import MarkovStateModel
 __all__ = ['APM']
 
 
-class APM():
+class APM(object):
     '''
     APM
     This Program is a python package which implements Automatic State Partitioning
@@ -116,10 +116,10 @@ class APM():
         global_maxQ = -1.0
         local_maxQ = -1.0
 
-        for iter in xrange(self.max_iter):
+        for iter in range(self.max_iter):
             self.__max_state = -1
             self.__micro_stack = []
-            for k in xrange(n_macrostates):
+            for k in range(n_macrostates):
                 self._do_split(micro_state=k, sub_clus=self.sub_clus)
                 self._do_time_clustering(macro_state=k)
 
@@ -160,10 +160,12 @@ class APM():
                         for element in self.__temp_MacroAssignments_
                     ]
                     self.labels_ = [copy.copy(element)
-                                     for element in self.__temp_labels_]
+                                    for element in self.__temp_labels_]
                     self.transmat_ = self.__temp_transmat_
 
-            print("Loop:", iter, "AcceptedMove?", acceptedMove, "metaQ:", metaQ, "prevQ:", prevQ, "global_maxQ:", global_maxQ, "local_maxQ:", local_maxQ, "macroCount:", n_macrostates)
+            print("Loop:", iter, "AcceptedMove?", acceptedMove, "metaQ:",
+                  metaQ, "prevQ:", prevQ, "global_maxQ:", global_maxQ,
+                  "local_maxQ:", local_maxQ, "macroCount:", n_macrostates)
             #set n_macrostates
             n_macrostates = self.n_macrostates
             self.__temp_labels_ = [copy.copy(element)
@@ -179,9 +181,9 @@ class APM():
     def _get_RelaxProb(self, micro_state=None, macro_state=None):
         count_trans = 0
         count_relax = 0
-        for k in xrange(len(self.X)):
+        for k in range(len(self.X)):
             X_len = len(self.X[k])
-            for i in xrange(X_len - self.lag_time):
+            for i in range(X_len - self.lag_time):
                 # if it starts at the desired state and ends at the same trajectory, count as one transition
                 if self.__temp_labels_[k][
                         i] == micro_state and self.__temp_MacroAssignments_[k][
@@ -216,8 +218,8 @@ class APM():
                 # accept if the relaxation time is fine
                 self.__micro_stack.pop(-1)
 
-            self._do_time_clustering(macro_state=macro_state
-                                     )  # Note: recursion
+            self._do_time_clustering(
+                macro_state=macro_state)  # Note: recursion
         return
 
     def _do_split(self, micro_state=None, sub_clus=2):
@@ -229,7 +231,7 @@ class APM():
             sub_indices = []
 
             #Get sub trjas
-            for i in xrange(len(self.X)):
+            for i in range(len(self.X)):
                 sub_X.append([])
                 sub_indices.append([])
                 sub_indices[i] = np.where(self.__temp_labels_[i] ==
@@ -238,13 +240,13 @@ class APM():
 
             micro_clusterer.fit(sub_X)
             sub_labels_ = micro_clusterer.labels_
-            for i in xrange(len(self.__temp_labels_)):
+            for i in range(len(self.__temp_labels_)):
                 local_max_state = max(self.__temp_labels_[i])
                 if local_max_state > self.__max_state:
                     self.__max_state = local_max_state
 
             #rename the cluster number on self.__temp_labels_
-            for i in xrange(len(sub_labels_)):
+            for i in range(len(sub_labels_)):
                 new_index = 0
                 for j in sub_indices[i][0]:
                     if sub_labels_[i][new_index] == 0:
