@@ -1,7 +1,7 @@
 from __future__ import absolute_import, print_function, division
 #from builtins import range
 #from builtins import object
-from past.utils import old_div
+#from past.utils import old_div
 __author__ = 'LIU Song <stephenliu1989@gmail.com>'
 __contributors__ = "Fu Kit SHEONG, Xuhui HUANG"
 __version__ = "0.9"
@@ -24,7 +24,6 @@ __all__ = ['APM']
 
 
 class APM():
-
     '''
     APM
     This Program is a python package which implements Automatic State Partitioning
@@ -195,7 +194,7 @@ class APM():
                                 k][i + self.lag_time] != macro_state:
                         count_relax += 1
         if count_trans > 0:
-            relax_prob = old_div(float(count_relax), float(count_trans))
+            relax_prob = float(count_relax) / float(count_trans)
             return relax_prob
         else:
             return 1.0
