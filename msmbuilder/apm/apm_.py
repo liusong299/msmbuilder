@@ -85,9 +85,10 @@ class APM(object):
         #Attributes:
         self.labels_ = None
         self.__temp_labels_ = None
+        self.MacroAssignments_ = None
         #self.transmat_ = None
 
-    def fit(self, X):
+    def fit(self, X, y=None):
         """Perform clustering.
         Parameters
         -----------
@@ -101,6 +102,9 @@ class APM(object):
         t1 = time.time()
         print("APM clustering Time Cost:", t1 - t0)
         return self
+
+    def fit_predict(self, X, y=None):
+        return self.fit(X, y).MacroAssignments_
 
     def _run(self):
         """Do the APM lumping.
@@ -158,10 +162,6 @@ class APM(object):
                     ]
                     self.labels_ = [copy.copy(element)
                                      for element in self.__temp_labels_]
-                    #np.savetxt("MacroAssignments.txt",
-                    #           self.MacroAssignments_,
-                    #           fmt="%d")
-                    #np.savetxt("MicroAssignments.txt", self.labels_, fmt="%d")
                     self.transmat_ = self.__temp_transmat_
 
             print("Loop:", iter, "AcceptedMove?", acceptedMove, "metaQ:", metaQ, "prevQ:", prevQ, "global_maxQ:", global_maxQ, "local_maxQ:", local_maxQ, "macroCount:", n_macrostates)
@@ -201,7 +201,7 @@ class APM(object):
             return 1.0
 
     def _do_time_clustering(self, macro_state=None):
-        #print "Doing time clustering..."
+        print("Doing time clustering...")
         if not self.__micro_stack:
             #print "Stack is emtpy"
             return

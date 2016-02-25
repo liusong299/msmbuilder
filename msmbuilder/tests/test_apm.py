@@ -4,73 +4,67 @@ import mdtraj as md
 import mdtraj.testing
 import numpy as np
 import scipy.spatial.distance
+from mdtraj.testing import eq
+
 
 import msmbuilder.cluster
+from msmbuilder.apm import APM
 
 X1 = 0.3 * np.random.RandomState(0).randn(1000, 10).astype(np.double)
 X2 = 0.3 * np.random.RandomState(1).randn(1000, 10).astype(np.float32)
-trj = md.load(md.testing.get_fn("traj.h5"))
+trj = md.load(md.testing.get_fn("frame0.pdb"))
 
 
-def test_regular_spatial_rmsd():
-    model = msmbuilder.cluster.RegularSpatial(d_min=0.01, metric='rmsd')
-    model.fit([trj])
-
-    assert isinstance(model.cluster_centers_, md.Trajectory)
-    assert len(model.cluster_centers_) == model.n_clusters_
-    predict = model.predict([trj])
-    assert isinstance(predict, list) and len(predict) == 1
-    assert len(predict[0]) == len(trj)
-    assert isinstance(predict[0], np.ndarray) and predict[0].dtype == np.intp
+def test_shapes():
+    # make sure all the shapes are correct of the fit parameters
+    m = APM(n_macrostates=3, metric='euclidean', lag_time=1)
+    m.fit([np.random.randn(100, 2)])
+    assert isinstance(m.labels_, list)
+    eq(m.labels_[0].shape, (100,))
 
 
-def test_regular_spatial():
-    model = msmbuilder.cluster.RegularSpatial(d_min=0.8)
+def test_euclidean():
+    # test for predict using euclidean distance
+    data = np.random.randn(100, 2)
+    m1 = APM(n_macrostates=3, metric='euclidean', lag_time=1)
+    m2 = APM(n_macrostates=3, metric='euclidean', lag_time=1)
 
-    for X in [X1, X2]:
-        model.fit([X])
+    labels1 = m1.fit_predict([data])
+    labels2 = m2.fit([data]).MacroAssignments_
+    eq(labels1[0], labels2[0])
 
-        assert model.cluster_centers_.shape[1] == 10
-        assert isinstance(model.cluster_centers_, np.ndarray)
-        assert len(model.cluster_centers_) == model.n_clusters_
-        predict = model.predict([X])
-        assert isinstance(predict, list) and len(predict) == 1
-        assert len(predict[0]) == len(X)
-        assert (isinstance(predict[0], np.ndarray)
-                and predict[0].dtype == np.intp)
+def test_euclidean_10000():
+    # test for predict using euclidean distance
+    m1 = APM(n_macrostates=3, metric='euclidean', lag_time=10)
+    m2 = APM(n_macrostates=3, metric='euclidean', lag_time=10)
+    data = np.random.randn(10000, 2)
+    labels1 = m1.fit_predict([data])
+    labels2 = m2.fit([data]).MacroAssignments_
+    eq(labels1[0], labels2[0])
 
-        assert model.cluster_centers_.shape[0] > 200
-        assert not np.all(scipy.spatial.distance.pdist(X) > model.d_min)
-        assert np.all(scipy.spatial.distance.pdist(model.cluster_centers_)
-                      > model.d_min)
+def test_rmsd():
+    # test for predict using euclidean distance
+    m1 = APM(n_macrostates=4, metric='rmsd', lag_time=1)
+    m2 = APM(n_macrostates=4, metric='rmsd', lag_time=1)
+    labels1 = m1.fit_predict([trj])
+    labels2 = m2.fit([trj]).MacroAssignments_
 
-        assert np.all(np.shape(model.cluster_center_indices_)
-                      == (len(model.cluster_center_indices_), 2))
+    eq(labels1[0], labels2[0])
 
+def test_dtype():
+    X = np.random.RandomState(1).randn(100, 2)
+    X32 = X.astype(np.float32)
+    X64 = X.astype(np.float64)
+    m1 = APM(n_macrostates=3, metric='euclidean', lag_time=1).fit([X32])
+    m2 = APM(n_macrostates=3, metric='euclidean', lag_time=1).fit([X64])
 
-def test_kcenters_rmsd():
-    model = msmbuilder.cluster.KCenters(3, metric='rmsd')
-    model.fit([trj])
+    eq(m1.labels_[0], m2.labels_[0])
+    eq(m1.MacroAssignments_[0], m2.MacroAssignments_[0])
+    eq(m1.fit_predict([X32])[0], m2.fit_predict([X64])[0])
+    eq(m1.fit_predict([X32])[0], m1.MacroAssignments_[0])
 
-    assert len(model.cluster_centers_) == 3
-    assert isinstance(model.cluster_centers_, md.Trajectory)
-    predict = model.predict([trj])
-    assert isinstance(predict, list) and len(predict) == 1
-    assert len(predict[0]) == len(trj)
-    assert isinstance(predict[0], np.ndarray) and predict[0].dtype == np.intp
-
-
-def test_kcenters_spatial():
-    model = msmbuilder.cluster.KCenters(5)
-
-    for X in [X1, X2]:
-        model.fit([X])
-
-        assert model.cluster_centers_.shape[1] == 10
-        assert isinstance(model.cluster_centers_, np.ndarray)
-        assert len(model.cluster_centers_) == 5
-        predict = model.predict([X])
-        assert isinstance(predict, list) and len(predict) == 1
-        assert len(predict[0]) == len(X)
-        assert (isinstance(predict[0], np.ndarray)
-                and predict[0].dtype == np.intp)
+#if __name__ == "__main__":
+#    test_shapes()
+#    test_euclidean()
+#    test_euclidean_10000()
+#    test_rmsd()
