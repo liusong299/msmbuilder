@@ -26,8 +26,8 @@ def test_shapes():
 def test_euclidean():
     # test for predict using euclidean distance
     data = np.random.randn(100, 2)
-    m1 = APM(n_macrostates=3, metric='euclidean', lag_time=1)
-    m2 = APM(n_macrostates=3, metric='euclidean', lag_time=1)
+    m1 = APM(n_macrostates=2, metric='euclidean', lag_time=1)
+    m2 = APM(n_macrostates=2, metric='euclidean', lag_time=1)
 
     labels1 = m1.fit_predict([data])
     labels2 = m2.fit([data]).MacroAssignments_
@@ -35,8 +35,8 @@ def test_euclidean():
 
 def test_euclidean_10000():
     # test for predict using euclidean distance
-    m1 = APM(n_macrostates=3, metric='euclidean', lag_time=10)
-    m2 = APM(n_macrostates=3, metric='euclidean', lag_time=10)
+    m1 = APM(n_macrostates=2, metric='euclidean', lag_time=10)
+    m2 = APM(n_macrostates=2, metric='euclidean', lag_time=10)
     data = np.random.randn(10000, 2)
     labels1 = m1.fit_predict([data])
     labels2 = m2.fit([data]).MacroAssignments_
@@ -66,5 +66,5 @@ def test_dtype():
 #if __name__ == "__main__":
 #    test_shapes()
 #    test_euclidean()
-#    test_euclidean_10000()
+#     test_euclidean_10000()
 #    test_rmsd()
