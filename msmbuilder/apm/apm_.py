@@ -1,7 +1,7 @@
 from __future__ import absolute_import, print_function, division
-from builtins import range
-from builtins import object
-from past.utils import old_div
+#from builtins import range
+#from builtins import object
+#from past.utils import old_div
 __author__ = 'LIU Song <stephenliu1989@gmail.com>'
 __contributors__ = "Fu Kit SHEONG, Xuhui HUANG"
 __version__ = "0.9"
@@ -23,7 +23,7 @@ from msmbuilder.msm import MarkovStateModel
 __all__ = ['APM']
 
 
-class APM(object):
+class APM():
 
     '''
     APM
@@ -117,10 +117,10 @@ class APM(object):
         global_maxQ = -1.0
         local_maxQ = -1.0
 
-        for iter in range(self.max_iter):
+        for iter in xrange(self.max_iter):
             self.__max_state = -1
             self.__micro_stack = []
-            for k in range(n_macrostates):
+            for k in xrange(n_macrostates):
                 self._do_split(micro_state=k, sub_clus=self.sub_clus)
                 self._do_time_clustering(macro_state=k)
 
@@ -180,9 +180,9 @@ class APM(object):
     def _get_RelaxProb(self, micro_state=None, macro_state=None):
         count_trans = 0
         count_relax = 0
-        for k in range(len(self.X)):
+        for k in xrange(len(self.X)):
             X_len = len(self.X[k])
-            for i in range(X_len - self.lag_time):
+            for i in xrange(X_len - self.lag_time):
                 # if it starts at the desired state and ends at the same trajectory, count as one transition
                 if self.__temp_labels_[k][
                         i] == micro_state and self.__temp_MacroAssignments_[k][
@@ -230,7 +230,7 @@ class APM(object):
             sub_indices = []
 
             #Get sub trjas
-            for i in range(len(self.X)):
+            for i in xrange(len(self.X)):
                 sub_X.append([])
                 sub_indices.append([])
                 sub_indices[i] = np.where(self.__temp_labels_[i] ==
@@ -239,13 +239,13 @@ class APM(object):
 
             micro_clusterer.fit(sub_X)
             sub_labels_ = micro_clusterer.labels_
-            for i in range(len(self.__temp_labels_)):
+            for i in xrange(len(self.__temp_labels_)):
                 local_max_state = max(self.__temp_labels_[i])
                 if local_max_state > self.__max_state:
                     self.__max_state = local_max_state
 
             #rename the cluster number on self.__temp_labels_
-            for i in range(len(sub_labels_)):
+            for i in xrange(len(sub_labels_)):
                 new_index = 0
                 for j in sub_indices[i][0]:
                     if sub_labels_[i][new_index] == 0:
